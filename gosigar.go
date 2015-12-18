@@ -57,6 +57,7 @@ func (s *Sigar) terror(m string, status C.int) error {
 	return errors.New(fmt.Sprintf("%v error(%v)->%v", m, status, string(buf)))
 }
 
+//query memory info
 func (s *Sigar) QueryMem() (*Mem, error) {
 	var mem C.sigar_mem_t
 	status := C.sigar_mem_get(s.sigar, &mem)
@@ -75,6 +76,7 @@ func (s *Sigar) QueryMem() (*Mem, error) {
 	}, nil
 }
 
+//query swap info
 func (s *Sigar) QuerySwap() (*Swap, error) {
 	var swap C.sigar_swap_t
 	status := C.sigar_swap_get(s.sigar, &swap)
@@ -90,6 +92,7 @@ func (s *Sigar) QuerySwap() (*Swap, error) {
 	}, nil
 }
 
+//query all cpu info
 func (s *Sigar) QueryCpu() (*Cpu, error) {
 	var cpu C.sigar_cpu_t
 	status := C.sigar_cpu_get(s.sigar, &cpu)
@@ -109,6 +112,7 @@ func (s *Sigar) QueryCpu() (*Cpu, error) {
 	}, nil
 }
 
+//query per cpu info
 func (s *Sigar) QueryCpus() ([]*Cpu, error) {
 	var cpus C.sigar_cpu_list_t
 	status := C.sigar_cpu_list_get(s.sigar, &cpus)
@@ -135,6 +139,7 @@ func (s *Sigar) QueryCpus() ([]*Cpu, error) {
 	return tcpus, nil
 }
 
+//query cpu physical info
 func (s *Sigar) QueryCpuInfoes() ([]*CpuInfo, error) {
 	var cpus C.sigar_cpu_info_list_t
 	status := C.sigar_cpu_info_list_get(s.sigar, &cpus)
@@ -164,6 +169,7 @@ func (s *Sigar) QueryCpuInfoes() ([]*CpuInfo, error) {
 	return tcpus, nil
 }
 
+//query uptime info
 func (s *Sigar) QueryUptime() (float64, error) {
 	var uptime C.sigar_uptime_t
 	status := C.sigar_uptime_get(s.sigar, &uptime)
@@ -173,6 +179,7 @@ func (s *Sigar) QueryUptime() (float64, error) {
 	return float64(uptime.uptime), nil
 }
 
+//query loadavg
 func (s *Sigar) QueryLoadAvg() ([]float64, error) {
 	var avg C.sigar_loadavg_t
 	status := C.sigar_loadavg_get(s.sigar, &avg)
@@ -186,6 +193,7 @@ func (s *Sigar) QueryLoadAvg() ([]float64, error) {
 	}, nil
 }
 
+//query proc id list
 func (s *Sigar) QueryProcs() ([]int64, error) {
 	var proc C.sigar_proc_list_t
 	status := C.sigar_proc_list_get(s.sigar, &proc)
@@ -201,6 +209,7 @@ func (s *Sigar) QueryProcs() ([]int64, error) {
 	return tproc, nil
 }
 
+//query system limit info
 func (s *Sigar) QueryResLimit() (*ResLimit, error) {
 	var limit C.sigar_resource_limit_t
 	status := C.sigar_resource_limit_get(s.sigar, &limit)

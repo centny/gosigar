@@ -4,6 +4,7 @@ import (
 	"fmt"
 )
 
+//memory info
 type Mem struct {
 	Ram,
 	Total,
@@ -20,6 +21,7 @@ func (m *Mem) String() string {
 		m.Ram, m.Total, m.Used, m.Free, m.ActualUsed, m.ActualFree, m.UsedPercent, m.FreePercent)
 }
 
+//swap info
 type Swap struct {
 	Total,
 	Used,
@@ -32,6 +34,7 @@ func (s *Swap) String() string {
 	return fmt.Sprintf("total(%v),used(%v),free(%v),page_in(%v),page_out(%v)", s.Total, s.Used, s.Free, s.PageIn, s.PageOut)
 }
 
+//cpu info
 type Cpu struct {
 	User,
 	Sys,
@@ -49,6 +52,7 @@ func (c *Cpu) String() string {
 		c.User, c.Sys, c.Nice, c.Idle, c.Wait, c.Irq, c.SoftIrq, c.Stolen, c.Total)
 }
 
+//cpu physical info
 type CpuInfo struct {
 	Vendor         string
 	Model          string
@@ -66,6 +70,7 @@ func (c *CpuInfo) String() string {
 		c.Vendor, c.Model, c.Mhz, c.MhzMax, c.MhzMin, c.CacheSize, c.TotalSockets, c.TotalCores, c.CoresPerSocket)
 }
 
+//resource limit
 type ResLimit struct {
 	/* RLIMIT_CPU */
 	CpuCur, CpuMax uint64
