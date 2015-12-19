@@ -219,6 +219,42 @@ func TestSigar(t *testing.T) {
 		return
 	}
 	fmt.Println(tcpu)
+	//
+	//
+	fmt.Println("\n\nQueryFileSystem..")
+	fss, err := sg.QueryFileSystems()
+	if err != nil {
+		t.Error(err.Error())
+		return
+	}
+	for _, fs := range fss {
+		fmt.Println()
+		fmt.Println(sg.PingFS(fs))
+		fmt.Println("-->", fs.String())
+		fmt.Println(sg.QueryDiskUsage(fs.DevName))
+		fmt.Println(sg.QueryFileSystemUsage(fs.DirName))
+		fmt.Println()
+	}
+	fmt.Println(fss)
+	//
+	//
+	fmt.Println("\n\nQueryNetInfo..")
+	nis, err := sg.QueryNetInfo()
+	if err != nil {
+		t.Error(err.Error())
+		return
+	}
+	fmt.Println(nis)
+	//
+	//
+	fmt.Println("\n\nQueryNetRoutes..")
+	nrs, err := sg.QueryNetRoutes()
+	if err != nil {
+		t.Error(err.Error())
+		return
+	}
+	fmt.Println(nrs[0].String())
+	fmt.Println(len(nrs))
 }
 
 func TestSigarErr(t *testing.T) {
@@ -252,4 +288,9 @@ func TestSigarErr(t *testing.T) {
 	sg.QueryProcDiskIO(pid)
 	sg.QueryProcCumulativeDiskIO(pid)
 	sg.QueryThreadCPU(0)
+	sg.QueryFileSystems()
+	sg.QueryDiskUsage("/")
+	sg.QueryFileSystemUsage("/")
+	sg.QueryNetInfo()
+	sg.QueryNetRoutes()
 }

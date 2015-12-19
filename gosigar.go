@@ -21,8 +21,24 @@ sigar_pid_t gs_pid_t_(sigar_proc_list_t* proc, int idx){
 	return proc->data[idx];
 }
 
-void gs_proc_args_cpy(sigar_proc_args_t* args, char* dest, int idx) {
-	strcpy(dest, args->data[idx]);
+char* gs_proc_args_t_(sigar_proc_args_t* args, int idx) {
+	return args->data[idx];
+}
+
+sigar_file_system_t gs_fs_t_(sigar_file_system_list_t* fs, int idx) {
+	return fs->data[idx];
+}
+
+void gs_nr_addr_set_t_(sigar_net_address_t* addr, int* family,
+		sigar_uint32_t* in, sigar_uint32_t* in6, void* mac) {
+	*family = addr->family;
+	*in = addr->addr.in;
+	memcpy(in6, addr->addr.in6, 4);
+	memcpy(mac, addr->addr.mac, 8);
+}
+
+sigar_net_route_t gs_nr_t_(sigar_net_route_list_t* nrs, int idx) {
+	return nrs->data[idx];
 }
 
 */
@@ -32,6 +48,16 @@ import (
 	"fmt"
 	"unsafe"
 )
+
+func cstring_(cs *C.char) string {
+	clen := C.strlen(cs)
+	if clen < 1 {
+		return ""
+	}
+	buf := make([]byte, clen+1)
+	C.strcpy((*C.char)(unsafe.Pointer(&buf[0])), cs)
+	return string(buf[:clen])
+}
 
 type Sigar struct {
 	sigar *C.sigar_t
@@ -155,12 +181,9 @@ func (s *Sigar) QueryCpuInfoes() ([]*CpuInfo, error) {
 	tcpus := []*CpuInfo{}
 	for i := 0; i < clen; i++ {
 		cpu := C.gs_cpu_info_t_(&cpus, C.int(i))
-		vendor, model := make([]byte, 128), make([]byte, 128)
-		C.strcpy((*C.char)(unsafe.Pointer(&vendor[0])), &cpu.vendor[0])
-		C.strcpy((*C.char)(unsafe.Pointer(&model[0])), &cpu.model[0])
 		tcpus = append(tcpus, &CpuInfo{
-			Vendor:         string(vendor),
-			Model:          string(model),
+			Vendor:         cstring_(&cpu.vendor[0]),
+			Model:          cstring_(&cpu.model[0]),
 			Mhz:            int(cpu.mhz),
 			MhzMax:         int(cpu.mhz_max),
 			MhzMin:         int(cpu.mhz_min),
@@ -339,12 +362,9 @@ func (s *Sigar) QueryProcCredName(pid int64) (*ProcCredName, error) {
 	if !s.IsOk(int(status)) {
 		return nil, s.terror("QueryProcCredName", status)
 	}
-	user, group := make([]byte, 512), make([]byte, 512)
-	C.strcpy((*C.char)(unsafe.Pointer(&user[0])), &cred.user[0])
-	C.strcpy((*C.char)(unsafe.Pointer(&group[0])), &cred.group[0])
 	return &ProcCredName{
-		User:  string(user),
-		Group: string(group),
+		User:  cstring_(&cred.user[0]),
+		Group: cstring_(&cred.group[0]),
 	}, nil
 }
 
@@ -387,10 +407,8 @@ func (s *Sigar) QueryProcState(pid int64) (*ProcState, error) {
 	if !s.IsOk(int(status)) {
 		return nil, s.terror("QueryProcCPU", status)
 	}
-	name := make([]byte, 128)
-	C.strcpy((*C.char)(unsafe.Pointer(&name[0])), &state.name[0])
 	return &ProcState{
-		Name:      string(name),
+		Name:      cstring_(&state.name[0]),
 		State:     byte(state.state),
 		Ppid:      uint64(state.ppid),
 		Tty:       int(state.tty),
@@ -412,10 +430,7 @@ func (s *Sigar) QueryProcArgs(pid int64) ([]string, error) {
 	clen := int(args.number)
 	targs := []string{}
 	for i := 0; i < clen; i++ {
-		arg := make([]byte, 1024)
-		C.gs_proc_args_cpy(&args, (*C.char)(unsafe.Pointer(&arg[0])), C.int(i))
-		arg_ := string(arg)
-		targs = append(targs, arg_)
+		targs = append(targs, cstring_(C.gs_proc_args_t_(&args, C.int(i))))
 	}
 	return targs, nil
 }
@@ -437,14 +452,10 @@ func (s *Sigar) QueryProcExe(pid int64) (*ProcExe, error) {
 	if !s.IsOk(int(status)) {
 		return nil, s.terror("QueryExe", status)
 	}
-	name, cwd, root := make([]byte, 4097), make([]byte, 4097), make([]byte, 4097)
-	C.strcpy((*C.char)(unsafe.Pointer(&name[0])), &exe.name[0])
-	C.strcpy((*C.char)(unsafe.Pointer(&cwd[0])), &exe.cwd[0])
-	C.strcpy((*C.char)(unsafe.Pointer(&root[0])), &exe.root[0])
 	return &ProcExe{
-		Name: string(name),
-		Cwd:  string(cwd),
-		Root: string(root),
+		Name: cstring_(&exe.name[0]),
+		Cwd:  cstring_(&exe.cwd[0]),
+		Root: cstring_(&exe.root[0]),
 	}, nil
 }
 
@@ -460,4 +471,195 @@ func (s *Sigar) QueryThreadCPU(id int64) (*ThreadCPU, error) {
 		Sys:   uint64(cpu.sys),
 		Total: uint64(cpu.total),
 	}, nil
+}
+
+//query file system
+func (s *Sigar) QueryFileSystems() ([]*FileSystem, error) {
+	var fss C.sigar_file_system_list_t
+	status := C.sigar_file_system_list_get(s.sigar, &fss)
+	if !s.IsOk(int(status)) {
+		return nil, s.terror("QueryFileSystems", status)
+	}
+	defer C.sigar_file_system_list_destroy(s.sigar, &fss)
+	clen := int(fss.number)
+	tfss := []*FileSystem{}
+	for i := 0; i < clen; i++ {
+		fs := C.gs_fs_t_(&fss, C.int(i))
+		ttyp := SIGAR_FSTYPE_UNKNOWN
+		switch fs._type {
+		case C.SIGAR_FSTYPE_UNKNOWN:
+			ttyp = SIGAR_FSTYPE_UNKNOWN
+		case C.SIGAR_FSTYPE_NONE:
+			ttyp = SIGAR_FSTYPE_NONE
+		case C.SIGAR_FSTYPE_LOCAL_DISK:
+			ttyp = SIGAR_FSTYPE_LOCAL_DISK
+		case C.SIGAR_FSTYPE_NETWORK:
+			ttyp = SIGAR_FSTYPE_NETWORK
+		case C.SIGAR_FSTYPE_RAM_DISK:
+			ttyp = SIGAR_FSTYPE_RAM_DISK
+		case C.SIGAR_FSTYPE_CDROM:
+			ttyp = SIGAR_FSTYPE_CDROM
+		case C.SIGAR_FSTYPE_SWAP:
+			ttyp = SIGAR_FSTYPE_SWAP
+		case C.SIGAR_FSTYPE_MAX:
+			ttyp = SIGAR_FSTYPE_MAX
+		}
+		tfss = append(tfss, &FileSystem{
+			DirName:     cstring_(&fs.dir_name[0]),
+			DevName:     cstring_(&fs.dev_name[0]),
+			TypeName:    cstring_(&fs.type_name[0]),
+			SysTypeName: cstring_(&fs.sys_type_name[0]),
+			Options:     cstring_(&fs.options[0]),
+			Type:        ttyp,
+			Flags:       uint64(fs.flags),
+		})
+	}
+	return tfss, nil
+}
+
+//query disk usage
+func (s *Sigar) QueryDiskUsage(name string) (*DiskUsage, error) {
+	name_ := C.CString(name)
+	defer C.free(unsafe.Pointer(name_))
+	var disk C.sigar_disk_usage_t
+	status := C.sigar_disk_usage_get(s.sigar, name_, &disk)
+	if !s.IsOk(int(status)) {
+		return nil, s.terror("QueryDiskUsage", status)
+	}
+	return &DiskUsage{
+		Reads:       uint64(disk.reads),
+		Writes:      uint64(disk.writes),
+		WriteBytes:  uint64(disk.write_bytes),
+		ReadBytes:   uint64(disk.read_bytes),
+		RTime:       uint64(disk.rtime),
+		WTime:       uint64(disk.wtime),
+		QTime:       uint64(disk.qtime),
+		Time:        uint64(disk.time),
+		Snaptime:    uint64(disk.snaptime),
+		ServiceTime: float64(disk.service_time),
+		Queue:       float64(disk.queue),
+	}, nil
+}
+
+//query file system usage
+func (s *Sigar) QueryFileSystemUsage(dirname string) (*FileSystemUsage, error) {
+	dirname_ := C.CString(dirname)
+	defer C.free(unsafe.Pointer(dirname_))
+	var fsu C.sigar_file_system_usage_t
+	status := C.sigar_file_system_usage_get(s.sigar, dirname_, &fsu)
+	if !s.IsOk(int(status)) {
+		return nil, s.terror("QueryFileSystemUsage", status)
+	}
+	disk := fsu.disk
+	return &FileSystemUsage{
+		Disk: DiskUsage{
+			Reads:       uint64(disk.reads),
+			Writes:      uint64(disk.writes),
+			WriteBytes:  uint64(disk.write_bytes),
+			ReadBytes:   uint64(disk.read_bytes),
+			RTime:       uint64(disk.rtime),
+			WTime:       uint64(disk.wtime),
+			QTime:       uint64(disk.qtime),
+			Time:        uint64(disk.time),
+			Snaptime:    uint64(disk.snaptime),
+			ServiceTime: float64(disk.service_time),
+			Queue:       float64(disk.queue),
+		},
+		UsePercent: float64(fsu.use_percent),
+		Total:      uint64(fsu.total),
+		Free:       uint64(fsu.free),
+		Used:       uint64(fsu.used),
+		Avail:      uint64(fsu.avail),
+		Files:      uint64(fsu.files),
+		FreeFiles:  uint64(fsu.free_files),
+	}, nil
+}
+
+//ping the file system
+func (s *Sigar) PingFS(fs *FileSystem) int {
+	var cfs C.sigar_file_system_t
+	dir, dev := []byte(fs.DirName), []byte(fs.DevName)
+	tn, sys, opt := []byte(fs.TypeName), []byte(fs.SysTypeName), []byte(fs.Options)
+	C.strcpy(&cfs.dir_name[0], (*C.char)(unsafe.Pointer(&dir[0])))
+	C.strcpy(&cfs.dev_name[0], (*C.char)(unsafe.Pointer(&dev[0])))
+	C.strcpy(&cfs.type_name[0], (*C.char)(unsafe.Pointer(&tn[0])))
+	C.strcpy(&cfs.sys_type_name[0], (*C.char)(unsafe.Pointer(&sys[0])))
+	C.strcpy(&cfs.options[0], (*C.char)(unsafe.Pointer(&opt[0])))
+	switch fs.Type {
+	case SIGAR_FSTYPE_NONE:
+		cfs._type = C.SIGAR_FSTYPE_NONE
+	case SIGAR_FSTYPE_LOCAL_DISK:
+		cfs._type = C.SIGAR_FSTYPE_LOCAL_DISK
+	case SIGAR_FSTYPE_NETWORK:
+		cfs._type = C.SIGAR_FSTYPE_NETWORK
+	case SIGAR_FSTYPE_RAM_DISK:
+		cfs._type = C.SIGAR_FSTYPE_RAM_DISK
+	case SIGAR_FSTYPE_CDROM:
+		cfs._type = C.SIGAR_FSTYPE_RAM_DISK
+	case SIGAR_FSTYPE_SWAP:
+		cfs._type = C.SIGAR_FSTYPE_SWAP
+	case SIGAR_FSTYPE_MAX:
+		cfs._type = C.SIGAR_FSTYPE_MAX
+	default:
+		cfs._type = C.SIGAR_FSTYPE_UNKNOWN
+	}
+	cfs.flags = C.ulong(fs.Flags)
+	return int(C.sigar_file_system_ping(s.sigar, &cfs))
+}
+
+//query net info
+func (s *Sigar) QueryNetInfo() (*NetInfo, error) {
+	var net C.sigar_net_info_t
+	status := C.sigar_net_info_get(s.sigar, &net)
+	if !s.IsOk(int(status)) {
+		return nil, s.terror("QueryDiskUsage", status)
+	}
+	return &NetInfo{
+		DefaultGateway:          cstring_(&net.default_gateway[0]),
+		DefaultGatewayInterface: cstring_(&net.default_gateway_interface[0]),
+		HostName:                cstring_(&net.host_name[0]),
+		DomainName:              cstring_(&net.domain_name[0]),
+		PrimaryDns:              cstring_(&net.primary_dns[0]),
+		SecondaryDns:            cstring_(&net.secondary_dns[0]),
+	}, nil
+}
+
+func (s *Sigar) net_reoute_addr(addr *C.sigar_net_address_t) NetAddr {
+	dest := NetAddr{}
+	C.gs_nr_addr_set_t_(addr,
+		(*C.int)(unsafe.Pointer(&dest.Family)),
+		(*C.sigar_uint32_t)(unsafe.Pointer(&dest.In)),
+		(*C.sigar_uint32_t)(unsafe.Pointer(&dest.In6[0])),
+		unsafe.Pointer(&dest.Mac[0]),
+	)
+	return dest
+}
+
+//query net route
+func (s *Sigar) QueryNetRoutes() ([]*NetRoute, error) {
+	var nrs C.sigar_net_route_list_t
+	status := C.sigar_net_route_list_get(s.sigar, &nrs)
+	if !s.IsOk(int(status)) {
+		return nil, s.terror("QueryFileSystems", status)
+	}
+	defer C.sigar_net_route_list_destroy(s.sigar, &nrs)
+	clen := int(nrs.number)
+	tnrs := []*NetRoute{}
+	for i := 0; i < clen; i++ {
+		nr := C.gs_nr_t_(&nrs, C.int(i))
+		tnrs = append(tnrs, &NetRoute{
+			Destination: s.net_reoute_addr(&nr.destination),
+			Gateway:     s.net_reoute_addr(&nr.gateway),
+			Mask:        s.net_reoute_addr(&nr.mask),
+			Flags:       uint64(nr.flags),
+			Refcnt:      uint64(nr.refcnt),
+			Use:         uint64(nr.use),
+			Metric:      uint64(nr.metric),
+			Mtu:         uint64(nr.mtu),
+			Window:      uint64(nr.window),
+			Irtt:        uint64(nr.irtt),
+			IfName:      cstring_(&nr.ifname[0]),
+		})
+	}
+	return tnrs, nil
 }

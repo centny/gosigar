@@ -263,3 +263,121 @@ func (t *ThreadCPU) String() string {
 	return fmt.Sprintf("user(%v),sys(%v),total(%v)",
 		t.User, t.Sys, t.Total)
 }
+
+const (
+	SIGAR_FSTYPE_UNKNOWN = iota
+	SIGAR_FSTYPE_NONE
+	SIGAR_FSTYPE_LOCAL_DISK
+	SIGAR_FSTYPE_NETWORK
+	SIGAR_FSTYPE_RAM_DISK
+	SIGAR_FSTYPE_CDROM
+	SIGAR_FSTYPE_SWAP
+	SIGAR_FSTYPE_MAX
+)
+
+//file system
+type FileSystem struct {
+	DirName     string
+	DevName     string
+	TypeName    string
+	SysTypeName string
+	Options     string
+	Type        int
+	Flags       uint64
+}
+
+func (f *FileSystem) String() string {
+	return fmt.Sprintf("dir_name(%v),dev_name(%v),type_name(%v),sys_type_name(%v),options(%v),type(%v),flags(%v)",
+		f.DirName, f.DevName, f.TypeName, f.SysTypeName, f.Options, f.Type, f.Flags)
+}
+
+//disk usage
+type DiskUsage struct {
+	Reads,
+	Writes,
+	WriteBytes,
+	ReadBytes,
+	RTime,
+	WTime,
+	QTime,
+	Time,
+	Snaptime uint64
+	ServiceTime,
+	Queue float64
+}
+
+func (d *DiskUsage) String() string {
+	return fmt.Sprintf("reads(%v),writes(%v),write_bytes(%v),read_bytes(%v),rtime(%v),wtime(%v),qtime(%v),time(%v),snaptime(%v),service_time(%v),queue(%v)",
+		d.Reads, d.Writes, d.WriteBytes, d.ReadBytes, d.RTime, d.WTime, d.QTime, d.Time, d.Snaptime, d.ServiceTime, d.Queue)
+}
+
+//file system usage
+type FileSystemUsage struct {
+	Disk       DiskUsage
+	UsePercent float64
+	Total,
+	Free,
+	Used,
+	Avail,
+	Files,
+	FreeFiles uint64
+}
+
+func (f *FileSystemUsage) String() string {
+	return fmt.Sprintf("total(%v),free(%v),used(%v),avail(%v),files(%v),free_files(%v)->disk:%v",
+		f.Total, f.Free, f.Used, f.Avail, f.Files, f.FreeFiles, f.Disk)
+}
+
+const (
+	SIGAR_AF_UNSPEC = iota
+	SIGAR_AF_INET
+	SIGAR_AF_INET6
+	SIGAR_AF_LINK
+)
+
+type NetAddr struct {
+	Family int
+	In     uint32
+	In6    [4]uint32
+	Mac    [8]uint8
+}
+
+func (n *NetAddr) String() string {
+	return fmt.Sprintf("family(%v),in(%v),in6(%v),mac(%v)",
+		n.Family, n.In, n.In6, n.Mac)
+}
+
+//net info
+type NetInfo struct {
+	DefaultGateway          string
+	DefaultGatewayInterface string
+	HostName                string
+	DomainName              string
+	PrimaryDns              string
+	SecondaryDns            string
+}
+
+func (n *NetInfo) String() string {
+	return fmt.Sprintf("default_gateway(%v),default_gateway_interface(%v),host_name(%v),domain_name(%v),primary_dns(%v),secondary_dns(%v)",
+		n.DefaultGateway, n.DefaultGatewayInterface, n.HostName, n.DomainName, n.PrimaryDns, n.SecondaryDns)
+}
+
+//net route
+type NetRoute struct {
+	Destination NetAddr
+	Gateway     NetAddr
+	Mask        NetAddr
+	Flags,
+	Refcnt,
+	Use,
+	Metric,
+	Mtu,
+	Window,
+	Irtt uint64
+	IfName string
+}
+
+func (n *NetRoute) String() string {
+	return fmt.Sprintf("flags(%v),refcnt(%v),use(%v),metric(%v),mtu(%v),window(%v),irtt(%v),ifname(%v)\ndestination:%v\ngateway:%v\nmask:%v",
+		n.Flags, n.Refcnt, n.Use, n.Metric, n.Mtu, n.Window, n.Irtt, n.IfName, n.Destination.String(), n.Gateway.String(), n.Mask.String())
+}
