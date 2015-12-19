@@ -21,6 +21,10 @@ sigar_pid_t gs_pid_t_(sigar_proc_list_t* proc, int idx){
 	return proc->data[idx];
 }
 
+void gs_proc_args_cpy(sigar_proc_args_t* args, char* dest, int idx) {
+	strcpy(dest, args->data[idx]);
+}
+
 */
 import "C"
 import (
@@ -237,5 +241,223 @@ func (s *Sigar) QueryResLimit() (*ResLimit, error) {
 		OpenFilesMax:     uint64(limit.open_files_max),
 		VirtualMemoryCur: uint64(limit.virtual_memory_cur),
 		VirtualMemoryMax: uint64(limit.virtual_memory_max),
+	}, nil
+}
+
+//query proc stat
+func (s *Sigar) QueryProcStat() (*ProcStat, error) {
+	var stat C.sigar_proc_stat_t
+	status := C.sigar_proc_stat_get(s.sigar, &stat)
+	if !s.IsOk(int(status)) {
+		return nil, s.terror("QueryProcStat", status)
+	}
+	return &ProcStat{
+		Total:    uint64(stat.total),
+		Sleeping: uint64(stat.sleeping),
+		Running:  uint64(stat.running),
+		Zombie:   uint64(stat.zombie),
+		Stopped:  uint64(stat.stopped),
+		Idle:     uint64(stat.idle),
+		Threads:  uint64(stat.threads),
+	}, nil
+}
+
+//query proc memory
+func (s *Sigar) QueryProcMem(pid int64) (*ProcMem, error) {
+	var mem C.sigar_proc_mem_t
+	status := C.sigar_proc_mem_get(s.sigar, C.sigar_pid_t(pid), &mem)
+	if !s.IsOk(int(status)) {
+		return nil, s.terror("QueryProcMem", status)
+	}
+	return &ProcMem{
+		Size:        uint64(mem.size),
+		Resident:    uint64(mem.resident),
+		Share:       uint64(mem.share),
+		MinorFaults: uint64(mem.minor_faults),
+		MajorFaults: uint64(mem.major_faults),
+		PageFaults:  uint64(mem.page_faults),
+	}, nil
+}
+
+//query proc disk io
+func (s *Sigar) QueryProcDiskIO(pid int64) (*ProcDiskIO, error) {
+	var disk C.sigar_proc_disk_io_t
+	status := C.sigar_proc_disk_io_get(s.sigar, C.sigar_pid_t(pid), &disk)
+	if !s.IsOk(int(status)) {
+		return nil, s.terror("QueryProcDiskIO", status)
+	}
+	return &ProcDiskIO{
+		BytesRead:    uint64(disk.bytes_read),
+		BytesWritten: uint64(disk.bytes_written),
+		BytesTotal:   uint64(disk.bytes_total),
+	}, nil
+}
+
+//query proc cumulative disk io
+func (s *Sigar) QueryProcCumulativeDiskIO(pid int64) (*ProcCumulativeDiskIO, error) {
+	var disk C.sigar_proc_cumulative_disk_io_t
+	status := C.sigar_proc_cumulative_disk_io_get(s.sigar, C.sigar_pid_t(pid), &disk)
+	if !s.IsOk(int(status)) {
+		return nil, s.terror("QueryProcCumulativeDiskIO", status)
+	}
+	return &ProcCumulativeDiskIO{
+		BytesRead:    uint64(disk.bytes_read),
+		BytesWritten: uint64(disk.bytes_written),
+		BytesTotal:   uint64(disk.bytes_total),
+	}, nil
+}
+
+//query dump cache
+func (s *Sigar) QueryDumpCache() (uint64, error) {
+	var dump C.sigar_dump_pid_cache_t
+	status := C.sigar_dump_pid_cache_get(s.sigar, &dump)
+	if !s.IsOk(int(status)) {
+		return 0, s.terror("QueryDumpCache", status)
+	}
+	return uint64(dump.dummy), nil
+}
+
+//query proc cred
+func (s *Sigar) QueryProcCred(pid int64) (*ProcCred, error) {
+	var cred C.sigar_proc_cred_t
+	status := C.sigar_proc_cred_get(s.sigar, C.sigar_pid_t(pid), &cred)
+	if !s.IsOk(int(status)) {
+		return nil, s.terror("QueryProcCred", status)
+	}
+	return &ProcCred{
+		Uid:  uint64(cred.uid),
+		Gid:  uint64(cred.gid),
+		EUid: uint64(cred.euid),
+		EGid: uint64(cred.egid),
+	}, nil
+}
+
+//query proc cred name
+func (s *Sigar) QueryProcCredName(pid int64) (*ProcCredName, error) {
+	var cred C.sigar_proc_cred_name_t
+	status := C.sigar_proc_cred_name_get(s.sigar, C.sigar_pid_t(pid), &cred)
+	if !s.IsOk(int(status)) {
+		return nil, s.terror("QueryProcCredName", status)
+	}
+	user, group := make([]byte, 512), make([]byte, 512)
+	C.strcpy((*C.char)(unsafe.Pointer(&user[0])), &cred.user[0])
+	C.strcpy((*C.char)(unsafe.Pointer(&group[0])), &cred.group[0])
+	return &ProcCredName{
+		User:  string(user),
+		Group: string(group),
+	}, nil
+}
+
+//query proc time
+func (s *Sigar) QueryProcTime(pid int64) (*ProcTime, error) {
+	var pt C.sigar_proc_time_t
+	status := C.sigar_proc_time_get(s.sigar, C.sigar_pid_t(pid), &pt)
+	if !s.IsOk(int(status)) {
+		return nil, s.terror("QueryProcTime", status)
+	}
+	return &ProcTime{
+		StartTime: uint64(pt.start_time),
+		User:      uint64(pt.user),
+		Sys:       uint64(pt.sys),
+		Total:     uint64(pt.total),
+	}, nil
+}
+
+//query proc cpu
+func (s *Sigar) QueryProcCPU(pid int64) (*ProcCPU, error) {
+	var cpu C.sigar_proc_cpu_t
+	status := C.sigar_proc_cpu_get(s.sigar, C.sigar_pid_t(pid), &cpu)
+	if !s.IsOk(int(status)) {
+		return nil, s.terror("QueryProcCPU", status)
+	}
+	return &ProcCPU{
+		StartTime: uint64(cpu.start_time),
+		User:      uint64(cpu.user),
+		Sys:       uint64(cpu.sys),
+		Total:     uint64(cpu.total),
+		LastTime:  uint64(cpu.last_time),
+		Percent:   float64(cpu.percent),
+	}, nil
+}
+
+//query proc state
+func (s *Sigar) QueryProcState(pid int64) (*ProcState, error) {
+	var state C.sigar_proc_state_t
+	status := C.sigar_proc_state_get(s.sigar, C.sigar_pid_t(pid), &state)
+	if !s.IsOk(int(status)) {
+		return nil, s.terror("QueryProcCPU", status)
+	}
+	name := make([]byte, 128)
+	C.strcpy((*C.char)(unsafe.Pointer(&name[0])), &state.name[0])
+	return &ProcState{
+		Name:      string(name),
+		State:     byte(state.state),
+		Ppid:      uint64(state.ppid),
+		Tty:       int(state.tty),
+		Priority:  int(state.priority),
+		Nice:      int(state.nice),
+		Processor: int(state.processor),
+		Threads:   uint64(state.threads),
+	}, nil
+}
+
+//query proc args
+func (s *Sigar) QueryProcArgs(pid int64) ([]string, error) {
+	var args C.sigar_proc_args_t
+	status := C.sigar_proc_args_get(s.sigar, C.sigar_pid_t(pid), &args)
+	if !s.IsOk(int(status)) {
+		return nil, s.terror("QueryProcArgs", status)
+	}
+	defer C.sigar_proc_args_destroy(s.sigar, &args)
+	clen := int(args.number)
+	targs := []string{}
+	for i := 0; i < clen; i++ {
+		arg := make([]byte, 1024)
+		C.gs_proc_args_cpy(&args, (*C.char)(unsafe.Pointer(&arg[0])), C.int(i))
+		arg_ := string(arg)
+		targs = append(targs, arg_)
+	}
+	return targs, nil
+}
+
+//query proc fd
+func (s *Sigar) QueryProcFD(pid int64) (uint64, error) {
+	var fd C.sigar_proc_fd_t
+	status := C.sigar_proc_fd_get(s.sigar, C.sigar_pid_t(pid), &fd)
+	if !s.IsOk(int(status)) {
+		return 0, s.terror("QueryProcFD", status)
+	}
+	return uint64(fd.total), nil
+}
+
+//query exe
+func (s *Sigar) QueryProcExe(pid int64) (*ProcExe, error) {
+	var exe C.sigar_proc_exe_t
+	status := C.sigar_proc_exe_get(s.sigar, C.sigar_pid_t(pid), &exe)
+	if !s.IsOk(int(status)) {
+		return nil, s.terror("QueryExe", status)
+	}
+	name, cwd, root := make([]byte, 4097), make([]byte, 4097), make([]byte, 4097)
+	C.strcpy((*C.char)(unsafe.Pointer(&name[0])), &exe.name[0])
+	C.strcpy((*C.char)(unsafe.Pointer(&cwd[0])), &exe.cwd[0])
+	C.strcpy((*C.char)(unsafe.Pointer(&root[0])), &exe.root[0])
+	return &ProcExe{
+		Name: string(name),
+		Cwd:  string(cwd),
+		Root: string(root),
+	}, nil
+}
+
+//query thread cpu.
+func (s *Sigar) QueryThreadCPU(id int64) (*ThreadCPU, error) {
+	var cpu C.sigar_thread_cpu_t
+	status := C.sigar_thread_cpu_get(s.sigar, C.sigar_uint64_t(id), &cpu)
+	if !s.IsOk(int(status)) {
+		return nil, s.terror("QueryThreadCPU", status)
+	}
+	return &ThreadCPU{
+		User:  uint64(cpu.user),
+		Sys:   uint64(cpu.sys),
+		Total: uint64(cpu.total),
 	}, nil
 }

@@ -2,6 +2,7 @@ package gosigar
 
 import (
 	"fmt"
+	"os"
 	"testing"
 )
 
@@ -90,6 +91,134 @@ func TestSigar(t *testing.T) {
 		return
 	}
 	fmt.Println(limit)
+	//
+	//
+	fmt.Println("\n\nQueryProcStat...")
+	stat, err := sg.QueryProcStat()
+	if err != nil {
+		t.Error(err.Error())
+		return
+	}
+	fmt.Println(stat)
+	//
+	pid := int64(os.Getpid())
+	//
+	//
+	fmt.Println("\n\nQueryProcMem...")
+	pmem, err := sg.QueryProcMem(pid)
+	if err != nil {
+		t.Error(err.Error())
+		return
+	}
+	fmt.Println(pmem)
+	//
+	//
+	// fmt.Println("\n\nQueryProcDiskIO...")
+	// pdisk, err := sg.QueryProcDiskIO(pid)
+	// if err != nil {
+	// 	t.Error(err.Error())
+	// 	return
+	// }
+	// fmt.Println(pdisk)
+	//
+	//
+	// fmt.Println("\n\nQueryProcCumulativeDiskIO...")
+	// pcdisk, err := sg.QueryProcCumulativeDiskIO(pid)
+	// if err != nil {
+	// 	t.Error(err.Error())
+	// 	return
+	// }
+	// fmt.Println(pcdisk)
+	//
+	//
+	fmt.Println("\n\nQueryDumpCache...")
+	dump, err := sg.QueryDumpCache()
+	if err != nil {
+		t.Error(err.Error())
+		return
+	}
+	fmt.Println(dump)
+	//
+	//
+	fmt.Println("\n\nQueryProcCred...")
+	pcred, err := sg.QueryProcCred(pid)
+	if err != nil {
+		t.Error(err.Error())
+		return
+	}
+	fmt.Println(pcred)
+	//
+	//
+	fmt.Println("\n\nQueryProcCredName..")
+	pcredn, err := sg.QueryProcCredName(pid)
+	if err != nil {
+		t.Error(err.Error())
+		return
+	}
+	fmt.Println(pcredn)
+	//
+	//
+	fmt.Println("\n\nQueryProcTime..")
+	pt, err := sg.QueryProcTime(pid)
+	if err != nil {
+		t.Error(err.Error())
+		return
+	}
+	fmt.Println(pt)
+	//
+	//
+	fmt.Println("\n\nQueryProcCPU..")
+	pcpu, err := sg.QueryProcCPU(pid)
+	if err != nil {
+		t.Error(err.Error())
+		return
+	}
+	fmt.Println(pcpu)
+	//
+	//
+	fmt.Println("\n\nQueryProcState..")
+	pst, err := sg.QueryProcState(pid)
+	if err != nil {
+		t.Error(err.Error())
+		return
+	}
+	fmt.Println(pst)
+	//
+	//
+	fmt.Println("\n\nQueryProcArgs..")
+	pargs, err := sg.QueryProcArgs(pid)
+	if err != nil {
+		t.Error(err.Error())
+		return
+	}
+	fmt.Println(pargs)
+	//
+	//
+	// fmt.Println("\n\nQueryProcFd..")
+	// pfd, err := sg.QueryProcFD(pid)
+	// if err != nil {
+	// 	t.Error(err.Error())
+	// 	return
+	// }
+	// fmt.Println(pfd)
+	//
+	//
+	fmt.Println("\n\nQueryProcExe..")
+	pex, err := sg.QueryProcExe(pid)
+	if err != nil {
+		t.Error(err.Error())
+		return
+	}
+	fmt.Println(pex)
+	//
+	//
+	fmt.Println("\n\nQueryThreadCPU..")
+	tcpu, err := sg.QueryThreadCPU(0)
+	if err != nil {
+		t.Error(err.Error())
+		return
+	}
+	fmt.Println(tcpu)
 }
 
 func TestSigarErr(t *testing.T) {
@@ -99,6 +228,7 @@ func TestSigarErr(t *testing.T) {
 	sg.IsOk = func(int) bool {
 		return false
 	}
+	pid := int64(os.Getpid())
 	sg.QueryMem()
 	sg.QuerySwap()
 	sg.QueryCpu()
@@ -108,4 +238,18 @@ func TestSigarErr(t *testing.T) {
 	sg.QueryLoadAvg()
 	sg.QueryProcs()
 	sg.QueryResLimit()
+	sg.QueryProcStat()
+	sg.QueryProcMem(pid)
+	sg.QueryDumpCache()
+	sg.QueryProcCred(pid)
+	sg.QueryProcCredName(pid)
+	sg.QueryProcTime(pid)
+	sg.QueryProcCPU(pid)
+	sg.QueryProcState(pid)
+	sg.QueryProcArgs(pid)
+	sg.QueryProcFD(pid)
+	sg.QueryProcExe(pid)
+	sg.QueryProcDiskIO(pid)
+	sg.QueryProcCumulativeDiskIO(pid)
+	sg.QueryThreadCPU(0)
 }
