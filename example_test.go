@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-func ExampleNetSpeed() {
+func ExampleNetIfStat() {
 	//query net speed
 	sigar := gosigar.NewSigar()
 	sigar.Open()
@@ -26,7 +26,7 @@ func ExampleNetSpeed() {
 	}
 }
 
-func ExampleMemory() {
+func ExampleMem() {
 	//query memory
 	sigar := gosigar.NewSigar()
 	sigar.Open()
