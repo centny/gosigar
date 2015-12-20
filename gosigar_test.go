@@ -271,15 +271,6 @@ func TestSigar(t *testing.T) {
 	sg.QueryNetConfig("en0")
 	//
 	//
-	fmt.Println("\n\nQueryNetStat..")
-	nst, err := sg.QueryNetStat("en0")
-	if err != nil {
-		t.Error(err.Error())
-		return
-	}
-	fmt.Println(nst)
-	//
-	//
 	fmt.Println("\n\nQueryNetNames..")
 	nns, err := sg.QueryNetNames()
 	if err != nil {
@@ -287,6 +278,19 @@ func TestSigar(t *testing.T) {
 		return
 	}
 	fmt.Println(nns)
+	//
+	//
+	fmt.Println("\n\nQueryNetStat..")
+	for _, nn := range nns {
+		//
+		//
+		nst, err := sg.QueryNetStat(nn)
+		if err != nil {
+			t.Error(err.Error())
+			return
+		}
+		fmt.Println(nst)
+	}
 	//
 	//
 	ncf := []int{
