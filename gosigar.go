@@ -7,6 +7,8 @@ package gosigar
 #include "sigar.h"
 #cgo darwin CPPFLAGS: -I/usr/local/include
 #cgo darwin LDFLAGS: -L/usr/local/lib -lsigar
+#cgo linux CPPFLAGS: -I/usr/local/include
+#cgo linux LDFLAGS: -L/usr/local/lib -lsigar
 #cgo win LDFLAGS: -LC:\LibreOffice4\sdk\lib -LC:\GOPATH\src\github.com\Centny\oogo -loogo -licppu -licppuhelper -lipurpenvhelper -lisal -lisalhelper
 
 char* gs_char_t_(char **data, int idx) {
