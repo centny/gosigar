@@ -47,6 +47,10 @@ sigar_net_connection_t gs_net_con_t_(sigar_net_connection_list_t* cons, int idx)
 	return cons->data[idx];
 }
 
+sigar_who_t gs_who_t_(sigar_who_list_t* ws, int idx) {
+	return ws->data[idx];
+}
+
 */
 import "C"
 import (
@@ -63,6 +67,28 @@ func cstring_(cs *C.char) string {
 	buf := make([]byte, clen+1)
 	C.strcpy((*C.char)(unsafe.Pointer(&buf[0])), cs)
 	return string(buf[:clen])
+}
+
+var ver_ *Ver
+
+func Version() *Ver {
+	if ver_ == nil {
+		ver := C.sigar_version_get()
+		ver_ = &Ver{
+			BuildDate:   cstring_(ver.build_date),
+			ScmRevision: cstring_(ver.scm_revision),
+			Version:     cstring_(ver.version),
+			Archname:    cstring_(ver.archname),
+			Archlib:     cstring_(ver.archlib),
+			Binname:     cstring_(ver.binname),
+			Description: cstring_(ver.description),
+			Major:       int(ver.major),
+			Minor:       int(ver.minor),
+			Maint:       int(ver.maint),
+			Build:       int(ver.build),
+		}
+	}
+	return ver_
 }
 
 type Sigar struct {
@@ -713,8 +739,8 @@ func (s *Sigar) QueryNetConfig(name string) (*NetConfig, error) {
 	}, nil
 }
 
-//query net stat
-func (s *Sigar) QueryNetStat(name string) (*NetStat, error) {
+//query net interface stat
+func (s *Sigar) QueryNetIfStat(name string) (*NetIfStat, error) {
 	var net C.sigar_net_interface_stat_t
 	name_ := C.CString(name)
 	defer C.free(unsafe.Pointer(name_))
@@ -722,7 +748,7 @@ func (s *Sigar) QueryNetStat(name string) (*NetStat, error) {
 	if !s.IsOk(int(status)) {
 		return nil, s.terror("QueryNetStat", status)
 	}
-	return &NetStat{
+	return &NetIfStat{
 		RxPackets:    uint64(net.rx_packets),
 		RxBytes:      uint64(net.rx_bytes),
 		RxErrors:     uint64(net.rx_errors),
@@ -782,4 +808,85 @@ func (s *Sigar) QueryNetConnections(flags int) ([]*NetConnection, error) {
 		})
 	}
 	return tcons, nil
+}
+
+//query net stat
+func (s *Sigar) QueryNetStat(flags int) (*NetStat, error) {
+	var net C.sigar_net_stat_t
+	status := C.sigar_net_stat_get(s.sigar, &net, C.int(flags))
+	if !s.IsOk(int(status)) {
+		return nil, s.terror("QueryNetStat", status)
+	}
+	tnet := &NetStat{
+		TcpInboundTotal:  uint32(net.tcp_inbound_total),
+		TcpOutboundTotal: uint32(net.tcp_outbound_total),
+		AllInboundTotal:  uint32(net.all_inbound_total),
+		AllOutboundTotal: uint32(net.all_outbound_total),
+	}
+	C.memcpy(unsafe.Pointer(&tnet.TcpStates[0]), unsafe.Pointer(&net.tcp_states[0]), SIGAR_TCP_UNKNOWN)
+	return tnet, nil
+}
+
+//query tcp
+func (s *Sigar) QueryTCP() (*TCP, error) {
+	var tcp C.sigar_tcp_t
+	status := C.sigar_tcp_get(s.sigar, &tcp)
+	if !s.IsOk(int(status)) {
+		return nil, s.terror("QueryTCP", status)
+	}
+	return &TCP{
+		ActiveOpens:  uint64(tcp.active_opens),
+		PassiveOpens: uint64(tcp.passive_opens),
+		AttemptFails: uint64(tcp.attempt_fails),
+		EstabResets:  uint64(tcp.estab_resets),
+		CurrEstab:    uint64(tcp.curr_estab),
+		InSegs:       uint64(tcp.in_segs),
+		OutSegs:      uint64(tcp.out_segs),
+		RetransSegs:  uint64(tcp.retrans_segs),
+		InErrs:       uint64(tcp.in_errs),
+		OutRsts:      uint64(tcp.out_rsts),
+	}, nil
+}
+
+//query who
+func (s *Sigar) QueryWhoes() ([]*Who, error) {
+	var ws C.sigar_who_list_t
+	status := C.sigar_who_list_get(s.sigar, &ws)
+	if !s.IsOk(int(status)) {
+		return nil, s.terror("QueryNetConnections", status)
+	}
+	defer C.sigar_who_list_destroy(s.sigar, &ws)
+	clen := int(ws.number)
+	tws := []*Who{}
+	for i := 0; i < clen; i++ {
+		w := C.gs_who_t_(&ws, C.int(i))
+		tws = append(tws, &Who{
+			User:   cstring_(&w.user[0]),
+			Device: cstring_(&w.device[0]),
+			Host:   cstring_(&w.host[0]),
+			Time:   uint64(w.time),
+		})
+	}
+	return tws, nil
+}
+
+//query sys info
+func (s *Sigar) QuerySysInfo() (*SysInfo, error) {
+	var sys C.sigar_sys_info_t
+	status := C.sigar_sys_info_get(s.sigar, &sys)
+	if !s.IsOk(int(status)) {
+		return nil, s.terror("QuerySysInfo", status)
+	}
+	return &SysInfo{
+		Name:           cstring_(&sys.name[0]),
+		Version:        cstring_(&sys.version[0]),
+		Arch:           cstring_(&sys.arch[0]),
+		Machine:        cstring_(&sys.machine[0]),
+		Description:    cstring_(&sys.description[0]),
+		PatchLevel:     cstring_(&sys.patch_level[0]),
+		Vendor:         cstring_(&sys.vendor[0]),
+		VendorVersion:  cstring_(&sys.vendor_version[0]),
+		VendorName:     cstring_(&sys.vendor_name[0]),
+		VendorCodeName: cstring_(&sys.vendor_code_name[0]),
+	}, nil
 }

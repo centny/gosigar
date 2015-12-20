@@ -428,8 +428,8 @@ func (n *NetConfig) String() string {
 		n.Hwaddr.String(), n.Address.String(), n.Destination.String(), n.Broadcast.String(), n.Netmask.String(), n.Address6.String())
 }
 
-//net stat
-type NetStat struct {
+//net interface stat
+type NetIfStat struct {
 	/* received */
 	RxPackets,
 	RxBytes,
@@ -448,7 +448,7 @@ type NetStat struct {
 	Speed uint64
 }
 
-func (n *NetStat) String() string {
+func (n *NetIfStat) String() string {
 	return fmt.Sprintf(`Stat:
 	rx_packets(%v),rx_bytes(%v),rx_errors(%v),rx_dropped(%v),rx_overruns(%v),rx_frame(%v),
 	tx_packets(%v),tx_bytes(%v),tx_errors(%v),tx_dropped(%v),tx_overruns(%v),tx_collisions(%v),tx_carrier(%v),
@@ -504,4 +504,104 @@ func (n *NetConnection) String() string {
 		n.LocalAddress.String(), n.LocalPort,
 		n.RemoteAddress.String(), n.RemotePort,
 	)
+}
+
+//net stat
+type NetStat struct {
+	TcpStates        [SIGAR_TCP_UNKNOWN]int
+	TcpInboundTotal  uint32
+	TcpOutboundTotal uint32
+	AllInboundTotal  uint32
+	AllOutboundTotal uint32
+}
+
+func (n *NetStat) String() string {
+	return fmt.Sprintf("tcp_states(%v),tcp_inbound_total(%v),tcp_outbound_total(%v),all_inbound_total(%v),all_outbound_total(%v)",
+		n.TcpStates, n.TcpInboundTotal, n.TcpOutboundTotal, n.AllInboundTotal, n.AllOutboundTotal)
+}
+
+//tcp
+type TCP struct {
+	ActiveOpens,
+	PassiveOpens,
+	AttemptFails,
+	EstabResets,
+	CurrEstab,
+	InSegs,
+	OutSegs,
+	RetransSegs,
+	InErrs,
+	OutRsts uint64
+}
+
+func (t *TCP) String() string {
+	return fmt.Sprintf("active_opens(%v),passive_opens(%v),attempt_fails(%v),estab_resets(%v),curr_estab(%v),in_segs(%v),out_segs(%v),retrans_segs(%v),in_errs(%v),out_rsts(%v)",
+		t.ActiveOpens, t.PassiveOpens, t.AttemptFails, t.EstabResets, t.CurrEstab, t.InSegs, t.OutSegs, t.RetransSegs, t.InErrs, t.OutRsts)
+}
+
+//who
+type Who struct {
+	User   string
+	Device string
+	Host   string
+	Time   uint64
+}
+
+func (w *Who) String() string {
+	return fmt.Sprintf("user(%v),device(%v),host(%v),time(%v)", w.User, w.Device, w.Host, w.Time)
+}
+
+//version
+type Ver struct {
+	BuildDate                  string
+	ScmRevision                string
+	Version                    string
+	Archname                   string
+	Archlib                    string
+	Binname                    string
+	Description                string
+	Major, Minor, Maint, Build int
+}
+
+func (v *Ver) String() string {
+	return fmt.Sprintf(`Version:
+	build_date: %v
+	scm_revision: %v
+	version: %v
+	archname: %v
+	archlib: %v
+	binname: %v
+	description: %v
+	major(%v),minor(%v),maint(%v),build(%v)
+	`, v.BuildDate, v.ScmRevision, v.Version, v.Archname, v.Archlib, v.Binname, v.Description,
+		v.Major, v.Minor, v.Maint, v.Build)
+}
+
+//sys info
+type SysInfo struct {
+	Name,
+	Version,
+	Arch,
+	Machine,
+	Description,
+	PatchLevel,
+	Vendor,
+	VendorVersion,
+	VendorName,
+	VendorCodeName string
+}
+
+func (s *SysInfo) String() string {
+	return fmt.Sprintf(`
+	name: %v
+	version: %v
+	arch: %v
+	machine: %v
+	description: %v
+	patch_level: %v
+	vendor: %v
+	vendor_version: %v
+	vendor_name: %v
+	vendor_code_name: %v
+	`, s.Name, s.Version, s.Arch, s.Machine, s.Description, s.PatchLevel, s.Vendor, s.VendorVersion, s.VendorName, s.VendorCodeName)
 }

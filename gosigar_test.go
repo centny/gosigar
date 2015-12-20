@@ -7,6 +7,9 @@ import (
 )
 
 func TestSigar(t *testing.T) {
+	fmt.Println(Version())
+	//
+	//
 	sg := NewSigar()
 	sg.Open()
 	defer sg.Close()
@@ -284,7 +287,7 @@ func TestSigar(t *testing.T) {
 	for _, nn := range nns {
 		//
 		//
-		nst, err := sg.QueryNetStat(nn)
+		nst, err := sg.QueryNetIfStat(nn)
 		if err != nil {
 			t.Error(err.Error())
 			return
@@ -308,6 +311,42 @@ func TestSigar(t *testing.T) {
 		}
 		fmt.Println(len(ncs))
 	}
+	//
+	//
+	fmt.Println("\n\nQueryNetStat..")
+	nss, err := sg.QueryNetStat(SIGAR_NETCONN_TCP)
+	if err != nil {
+		t.Error(err.Error())
+		return
+	}
+	fmt.Println(nss)
+	//
+	//
+	fmt.Println("\n\nQueryTCP..")
+	tcp, err := sg.QueryTCP()
+	if err != nil {
+		t.Error(err.Error())
+		return
+	}
+	fmt.Println(tcp)
+	//
+	//
+	fmt.Println("\n\nQueryWhoes..")
+	ws, err := sg.QueryWhoes()
+	if err != nil {
+		t.Error(err.Error())
+		return
+	}
+	fmt.Println(ws)
+	//
+	//
+	fmt.Println("\n\nQuerySysInfo..")
+	sys, err := sg.QuerySysInfo()
+	if err != nil {
+		t.Error(err.Error())
+		return
+	}
+	fmt.Println(sys)
 }
 
 func TestSigarErr(t *testing.T) {
@@ -347,6 +386,10 @@ func TestSigarErr(t *testing.T) {
 	sg.QueryNetInfo()
 	sg.QueryNetRoutes()
 	sg.QueryNetConfig("")
-	sg.QueryNetStat("en0")
+	sg.QueryNetIfStat("en0")
 	sg.QueryNetNames()
+	sg.QueryNetStat(0)
+	sg.QueryTCP()
+	sg.QueryWhoes()
+	sg.QuerySysInfo()
 }
