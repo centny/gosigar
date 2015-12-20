@@ -1,7 +1,9 @@
 package gosigar
 
 import (
+	"encoding/hex"
 	"fmt"
+	"strings"
 )
 
 //memory info
@@ -340,20 +342,24 @@ type NetAddr struct {
 	Family int
 	In     uint32
 	In6    [4]uint32
-	Mac    [8]uint8
+	Mac    [8]byte
 }
 
 func (n *NetAddr) String() string {
 	return fmt.Sprintf("family(%v),in(%v),in6(%v),mac(%v)",
-		n.Family, n.Ip(), n.In6, n.Mac)
+		n.Family, n.IP(), n.In6, n.MAC())
 }
 
-func (n *NetAddr) Ip() string {
+func (n *NetAddr) IP() string {
 	ip0 := uint8(n.In)
 	ip1 := uint8(n.In >> 8)
 	ip2 := uint8(n.In >> 16)
 	ip3 := uint8(n.In >> 24)
 	return fmt.Sprintf("%v.%v.%v.%v", ip0, ip1, ip2, ip3)
+}
+
+func (n *NetAddr) MAC() string {
+	return strings.ToUpper(strings.TrimSuffix(hex.EncodeToString(n.Mac[:8]), "0000"))
 }
 
 //net info
