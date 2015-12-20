@@ -9,6 +9,10 @@ package gosigar
 #cgo darwin LDFLAGS: -L/usr/local/lib -lsigar
 #cgo win LDFLAGS: -LC:\LibreOffice4\sdk\lib -LC:\GOPATH\src\github.com\Centny\oogo -loogo -licppu -licppuhelper -lipurpenvhelper -lisal -lisalhelper
 
+char* gs_char_t_(char **data, int idx) {
+	return data[idx];
+}
+
 sigar_cpu_t gs_cpu_t_(sigar_cpu_list_t* cpus, int idx) {
 	return cpus->data[idx];
 }
@@ -19,10 +23,6 @@ sigar_cpu_info_t gs_cpu_info_t_(sigar_cpu_info_list_t* cpus, int idx) {
 
 sigar_pid_t gs_pid_t_(sigar_proc_list_t* proc, int idx){
 	return proc->data[idx];
-}
-
-char* gs_proc_args_t_(sigar_proc_args_t* args, int idx) {
-	return args->data[idx];
 }
 
 sigar_file_system_t gs_fs_t_(sigar_file_system_list_t* fs, int idx) {
@@ -39,6 +39,10 @@ void gs_nr_addr_set_t_(sigar_net_address_t* addr, int* family,
 
 sigar_net_route_t gs_nr_t_(sigar_net_route_list_t* nrs, int idx) {
 	return nrs->data[idx];
+}
+
+sigar_net_connection_t gs_net_con_t_(sigar_net_connection_list_t* cons, int idx) {
+	return cons->data[idx];
 }
 
 */
@@ -430,7 +434,7 @@ func (s *Sigar) QueryProcArgs(pid int64) ([]string, error) {
 	clen := int(args.number)
 	targs := []string{}
 	for i := 0; i < clen; i++ {
-		targs = append(targs, cstring_(C.gs_proc_args_t_(&args, C.int(i))))
+		targs = append(targs, cstring_(C.gs_char_t_(args.data, C.int(i))))
 	}
 	return targs, nil
 }
@@ -624,7 +628,7 @@ func (s *Sigar) QueryNetInfo() (*NetInfo, error) {
 	}, nil
 }
 
-func (s *Sigar) net_reoute_addr(addr *C.sigar_net_address_t) NetAddr {
+func (s *Sigar) net_addr(addr *C.sigar_net_address_t) NetAddr {
 	dest := NetAddr{}
 	C.gs_nr_addr_set_t_(addr,
 		(*C.int)(unsafe.Pointer(&dest.Family)),
@@ -632,6 +636,16 @@ func (s *Sigar) net_reoute_addr(addr *C.sigar_net_address_t) NetAddr {
 		(*C.sigar_uint32_t)(unsafe.Pointer(&dest.In6[0])),
 		unsafe.Pointer(&dest.Mac[0]),
 	)
+	switch dest.Family {
+	case C.SIGAR_AF_UNSPEC:
+		dest.Family = SIGAR_AF_UNSPEC
+	case C.SIGAR_AF_INET:
+		dest.Family = SIGAR_AF_INET
+	case C.SIGAR_AF_INET6:
+		dest.Family = SIGAR_AF_INET6
+	case C.SIGAR_AF_LINK:
+		dest.Family = SIGAR_AF_LINK
+	}
 	return dest
 }
 
@@ -648,9 +662,9 @@ func (s *Sigar) QueryNetRoutes() ([]*NetRoute, error) {
 	for i := 0; i < clen; i++ {
 		nr := C.gs_nr_t_(&nrs, C.int(i))
 		tnrs = append(tnrs, &NetRoute{
-			Destination: s.net_reoute_addr(&nr.destination),
-			Gateway:     s.net_reoute_addr(&nr.gateway),
-			Mask:        s.net_reoute_addr(&nr.mask),
+			Destination: s.net_addr(&nr.destination),
+			Gateway:     s.net_addr(&nr.gateway),
+			Mask:        s.net_addr(&nr.mask),
 			Flags:       uint64(nr.flags),
 			Refcnt:      uint64(nr.refcnt),
 			Use:         uint64(nr.use),
@@ -662,4 +676,108 @@ func (s *Sigar) QueryNetRoutes() ([]*NetRoute, error) {
 		})
 	}
 	return tnrs, nil
+}
+
+//query net config
+func (s *Sigar) QueryNetConfig(name string) (*NetConfig, error) {
+	var net C.sigar_net_interface_config_t
+	var status C.int
+	if len(name) < 1 {
+		status = C.sigar_net_interface_config_primary_get(s.sigar, &net)
+	} else {
+		name_ := C.CString(name)
+		defer C.free(unsafe.Pointer(name_))
+		status = C.sigar_net_interface_config_get(s.sigar, name_, &net)
+	}
+	if !s.IsOk(int(status)) {
+		return nil, s.terror("QueryNetConfig", status)
+	}
+	return &NetConfig{
+		Name:          cstring_(&net.name[0]),
+		Type:          cstring_(&net._type[0]),
+		Description:   cstring_(&net.description[0]),
+		Hwaddr:        s.net_addr(&net.hwaddr),
+		Address:       s.net_addr(&net.address),
+		Destination:   s.net_addr(&net.destination),
+		Broadcast:     s.net_addr(&net.broadcast),
+		Netmask:       s.net_addr(&net.netmask),
+		Address6:      s.net_addr(&net.address6),
+		Prefix6Length: int(net.prefix6_length),
+		Scope6:        int(net.scope6),
+		Flags:         uint64(net.flags),
+		Mtu:           uint64(net.mtu),
+		Metric:        uint64(net.metric),
+		TxQueueLen:    int(net.tx_queue_len),
+	}, nil
+}
+
+//query net stat
+func (s *Sigar) QueryNetStat(name string) (*NetStat, error) {
+	var net C.sigar_net_interface_stat_t
+	name_ := C.CString(name)
+	defer C.free(unsafe.Pointer(name_))
+	status := C.sigar_net_interface_stat_get(s.sigar, name_, &net)
+	if !s.IsOk(int(status)) {
+		return nil, s.terror("QueryNetStat", status)
+	}
+	return &NetStat{
+		RxPackets:    uint64(net.rx_packets),
+		RxBytes:      uint64(net.rx_bytes),
+		RxErrors:     uint64(net.rx_errors),
+		RxDropped:    uint64(net.rx_dropped),
+		RxOverruns:   uint64(net.rx_overruns),
+		RxFrame:      uint64(net.rx_frame),
+		TxPackets:    uint64(net.tx_packets),
+		TxBytes:      uint64(net.tx_bytes),
+		TxErrors:     uint64(net.tx_errors),
+		TxDropped:    uint64(net.tx_dropped),
+		TxOverruns:   uint64(net.tx_overruns),
+		TxCollisions: uint64(net.tx_collisions),
+		TxCarrier:    uint64(net.tx_carrier),
+		Speed:        uint64(net.speed),
+	}, nil
+}
+
+//query net name
+func (s *Sigar) QueryNetNames() ([]string, error) {
+	var names C.sigar_net_interface_list_t
+	status := C.sigar_net_interface_list_get(s.sigar, &names)
+	if !s.IsOk(int(status)) {
+		return nil, s.terror("QueryNetNames", status)
+	}
+	defer C.sigar_net_interface_list_destroy(s.sigar, &names)
+	clen := int(names.number)
+	tnames := []string{}
+	for i := 0; i < clen; i++ {
+		tnames = append(tnames, cstring_(C.gs_char_t_(names.data, C.int(i))))
+	}
+	return tnames, nil
+}
+
+func (s *Sigar) QueryNetConnections(flags int) ([]*NetConnection, error) {
+	var flags_ C.int = C.int(flags)
+	var cons C.sigar_net_connection_list_t
+	status := C.sigar_net_connection_list_get(s.sigar, &cons, flags_)
+	if !s.IsOk(int(status)) {
+		return nil, s.terror("QueryNetConnections", status)
+	}
+	defer C.sigar_net_connection_list_destroy(s.sigar, &cons)
+	clen := int(cons.number)
+	tcons := []*NetConnection{}
+	for i := 0; i < clen; i++ {
+		con := C.gs_net_con_t_(&cons, C.int(i))
+		tcons = append(tcons, &NetConnection{
+			LocalPort:     uint64(con.local_port),
+			LocalAddress:  s.net_addr(&con.local_address),
+			RemotePort:    uint64(con.remote_port),
+			RemoteAddress: s.net_addr(&con.local_address),
+			Uid:           uint64(con.uid),
+			Inode:         uint64(con.inode),
+			Type:          int(con._type),
+			State:         int(con.state),
+			SendQueue:     uint64(con.send_queue),
+			ReceiveQueue:  uint64(con.receive_queue),
+		})
+	}
+	return tcons, nil
 }

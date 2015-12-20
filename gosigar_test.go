@@ -253,8 +253,57 @@ func TestSigar(t *testing.T) {
 		t.Error(err.Error())
 		return
 	}
+	// for _, nr := range nrs {
+	// 	fmt.Println(nr.String())
+	// 	fmt.Println("\n")
+	// }
 	fmt.Println(nrs[0].String())
 	fmt.Println(len(nrs))
+	//
+	//
+	fmt.Println("\n\nQueryNetConfig..")
+	ncfg, err := sg.QueryNetConfig("")
+	if err != nil {
+		t.Error(err.Error())
+		return
+	}
+	fmt.Println(ncfg)
+	sg.QueryNetConfig("en0")
+	//
+	//
+	fmt.Println("\n\nQueryNetStat..")
+	nst, err := sg.QueryNetStat("en0")
+	if err != nil {
+		t.Error(err.Error())
+		return
+	}
+	fmt.Println(nst)
+	//
+	//
+	fmt.Println("\n\nQueryNetNames..")
+	nns, err := sg.QueryNetNames()
+	if err != nil {
+		t.Error(err.Error())
+		return
+	}
+	fmt.Println(nns)
+	//
+	//
+	ncf := []int{
+		SIGAR_NETCONN_TCP,
+		SIGAR_NETCONN_UDP,
+		SIGAR_NETCONN_RAW,
+		SIGAR_NETCONN_UNIX,
+	}
+	fmt.Println("\n\nQueryNetConnections..")
+	for _, f := range ncf {
+		ncs, err := sg.QueryNetConnections(f)
+		if err != nil {
+			t.Error(err.Error())
+			return
+		}
+		fmt.Println(len(ncs))
+	}
 }
 
 func TestSigarErr(t *testing.T) {
@@ -293,4 +342,7 @@ func TestSigarErr(t *testing.T) {
 	sg.QueryFileSystemUsage("/")
 	sg.QueryNetInfo()
 	sg.QueryNetRoutes()
+	sg.QueryNetConfig("")
+	sg.QueryNetStat("en0")
+	sg.QueryNetNames()
 }

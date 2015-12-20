@@ -335,6 +335,7 @@ const (
 	SIGAR_AF_LINK
 )
 
+//net addr
 type NetAddr struct {
 	Family int
 	In     uint32
@@ -344,7 +345,15 @@ type NetAddr struct {
 
 func (n *NetAddr) String() string {
 	return fmt.Sprintf("family(%v),in(%v),in6(%v),mac(%v)",
-		n.Family, n.In, n.In6, n.Mac)
+		n.Family, n.Ip(), n.In6, n.Mac)
+}
+
+func (n *NetAddr) Ip() string {
+	ip0 := uint8(n.In)
+	ip1 := uint8(n.In >> 8)
+	ip2 := uint8(n.In >> 16)
+	ip3 := uint8(n.In >> 24)
+	return fmt.Sprintf("%v.%v.%v.%v", ip0, ip1, ip2, ip3)
 }
 
 //net info
@@ -378,6 +387,121 @@ type NetRoute struct {
 }
 
 func (n *NetRoute) String() string {
-	return fmt.Sprintf("flags(%v),refcnt(%v),use(%v),metric(%v),mtu(%v),window(%v),irtt(%v),ifname(%v)\ndestination:%v\ngateway:%v\nmask:%v",
-		n.Flags, n.Refcnt, n.Use, n.Metric, n.Mtu, n.Window, n.Irtt, n.IfName, n.Destination.String(), n.Gateway.String(), n.Mask.String())
+	return fmt.Sprintf(`Route:
+	flags(%v),refcnt(%v),use(%v),metric(%v),mtu(%v),window(%v),irtt(%v),ifname(%v)
+	destination: %v
+	gateway: %v
+	mask: %v`,
+		n.Flags, n.Refcnt, n.Use, n.Metric, n.Mtu, n.Window, n.Irtt, n.IfName,
+		n.Destination.String(), n.Gateway.String(), n.Mask.String())
+}
+
+//net config
+type NetConfig struct {
+	Name          string
+	Type          string
+	Description   string
+	Hwaddr        NetAddr
+	Address       NetAddr
+	Destination   NetAddr
+	Broadcast     NetAddr
+	Netmask       NetAddr
+	Address6      NetAddr
+	Prefix6Length int
+	Scope6        int
+	Flags,
+	Mtu,
+	Metric uint64
+	TxQueueLen int
+}
+
+func (n *NetConfig) String() string {
+	return fmt.Sprintf(`Config:
+	name(%v),type(%v),description(%v),prefix6_length(%v),scope6(%v),flags(%v),mtu(%v),metric(%v),tx_queue_len(%v)
+	hwaddr: %v
+	address: %v
+	destination: %v
+	broadcast: %v
+	netmask: %v
+	address6: %v`,
+		n.Name, n.Type, n.Description, n.Prefix6Length, n.Scope6, n.Flags, n.Mtu, n.Metric, n.TxQueueLen,
+		n.Hwaddr.String(), n.Address.String(), n.Destination.String(), n.Broadcast.String(), n.Netmask.String(), n.Address6.String())
+}
+
+//net stat
+type NetStat struct {
+	/* received */
+	RxPackets,
+	RxBytes,
+	RxErrors,
+	RxDropped,
+	RxOverruns,
+	RxFrame,
+	/* transmitted */
+	TxPackets,
+	TxBytes,
+	TxErrors,
+	TxDropped,
+	TxOverruns,
+	TxCollisions,
+	TxCarrier,
+	Speed uint64
+}
+
+func (n *NetStat) String() string {
+	return fmt.Sprintf(`Stat:
+	rx_packets(%v),rx_bytes(%v),rx_errors(%v),rx_dropped(%v),rx_overruns(%v),rx_frame(%v),
+	tx_packets(%v),tx_bytes(%v),tx_errors(%v),tx_dropped(%v),tx_overruns(%v),tx_collisions(%v),tx_carrier(%v),
+	speed(%v)`,
+		n.RxPackets, n.RxBytes, n.RxErrors, n.RxDropped, n.RxOverruns, n.RxFrame,
+		n.TxPackets, n.TxBytes, n.TxErrors, n.TxDropped, n.TxOverruns, n.TxCollisions, n.TxCarrier,
+		n.Speed)
+}
+
+const (
+	SIGAR_TCP_ESTABLISHED = iota
+	SIGAR_TCP_SYN_SENT
+	SIGAR_TCP_SYN_RECV
+	SIGAR_TCP_FIN_WAIT1
+	SIGAR_TCP_FIN_WAIT2
+	SIGAR_TCP_TIME_WAIT
+	SIGAR_TCP_CLOSE
+	SIGAR_TCP_CLOSE_WAIT
+	SIGAR_TCP_LAST_ACK
+	SIGAR_TCP_LISTEN
+	SIGAR_TCP_CLOSING
+	SIGAR_TCP_IDLE
+	SIGAR_TCP_BOUND
+	SIGAR_TCP_UNKNOWN
+)
+const (
+	SIGAR_NETCONN_TCP  = 0x10
+	SIGAR_NETCONN_UDP  = 0x20
+	SIGAR_NETCONN_RAW  = 0x40
+	SIGAR_NETCONN_UNIX = 0x80
+)
+
+//net connection
+type NetConnection struct {
+	LocalPort     uint64
+	LocalAddress  NetAddr
+	RemotePort    uint64
+	RemoteAddress NetAddr
+	Uid           uint64
+	Inode         uint64
+	Type          int
+	State         int
+	SendQueue     uint64
+	ReceiveQueue  uint64
+}
+
+func (n *NetConnection) String() string {
+	return fmt.Sprintf(`Connection:
+	uid(%v),inode(%v),type(%v),state(%v),send_queue(%v),receive_queue(%v)
+	local_address: %v port(%v)
+	remote_address: %v port(%v)`,
+		n.Uid, n.Inode, n.Type, n.State, n.SendQueue, n.ReceiveQueue,
+		n.LocalAddress.String(), n.LocalPort,
+		n.RemoteAddress.String(), n.RemotePort,
+	)
 }
