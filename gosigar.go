@@ -1,3 +1,4 @@
+//Package gosigar provider bingind api to clang library libsigar.
 package gosigar
 
 /*
